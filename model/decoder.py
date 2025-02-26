@@ -26,19 +26,19 @@ class Decoder(nn.Module):
 
         self.first_layer = nn.Sequential(self.conv2(3, self.channels),
                                          nn.BatchNorm2d(self.channels),
-                                         nn.LeakyReLU(inplace=True))
+                                         nn.LeakyReLU(inplace=False))
 
         self.second_layer = nn.Sequential(self.conv2(self.channels, self.channels),
                                           nn.BatchNorm2d(self.channels),
-                                          nn.LeakyReLU(inplace=True))
+                                          nn.LeakyReLU(inplace=False))
 
         self.third_layer = nn.Sequential(self.conv2(self.channels * 2, self.channels),
                                          nn.BatchNorm2d(self.channels),
-                                         nn.LeakyReLU(inplace=True))
+                                         nn.LeakyReLU(inplace=False))
 
         self.fourth_layer = nn.Sequential(self.conv2(self.channels * 3, self.channels),
                                           nn.BatchNorm2d(self.channels),
-                                          nn.LeakyReLU(inplace=True))
+                                          nn.LeakyReLU(inplace=False))
 
         self.Dense_block1 = Bottleneck(self.channels, self.channels)
         self.Dense_block2 = Bottleneck(self.channels * 2, self.channels)
@@ -46,7 +46,7 @@ class Decoder(nn.Module):
 
         self.fivth_layer = nn.Sequential(self.conv2(self.channels, config.message_length),
                                          nn.BatchNorm2d(config.message_length),
-                                         nn.ReLU(inplace=True))
+                                         nn.ReLU(inplace=False))
 
         self.pooling = nn.AdaptiveAvgPool2d(output_size=(1, 1))
         self.linear = nn.Linear(config.message_length, config.message_length)
@@ -58,5 +58,7 @@ class Decoder(nn.Module):
         feature3 = self.fourth_layer(torch.cat([feature0, feature1, feature2], dim=1))
         x = self.fivth_layer(feature3)
         x = self.pooling(x)
-        x = self.linear(x.squeeze_(3).squeeze_(2))
+        x = x.squeeze(3)
+        x = x.squeeze(2)
+        x = self.linear(x)
         return x

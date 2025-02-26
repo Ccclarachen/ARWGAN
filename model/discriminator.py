@@ -25,26 +25,26 @@ class Discriminator(nn.Module):
 
         self.first_layer = nn.Sequential(self.conv2(3, self.channels),
                                          nn.BatchNorm2d(self.channels),
-                                         nn.LeakyReLU(inplace=True))
+                                         nn.LeakyReLU(inplace=False))
 
         self.second_layer = nn.Sequential(self.conv2(self.channels, self.channels),
                                           nn.BatchNorm2d(self.channels),
-                                          nn.LeakyReLU(inplace=True))
+                                          nn.LeakyReLU(inplace=False))
 
         self.third_layer = nn.Sequential(self.conv2(self.channels * 2, self.channels),
                                          nn.BatchNorm2d(self.channels),
-                                         nn.LeakyReLU(inplace=True))
+                                         nn.LeakyReLU(inplace=False))
 
         self.fourth_layer = nn.Sequential(self.conv2(self.channels * 3, self.channels),
                                           nn.BatchNorm2d(self.channels),
-                                          nn.LeakyReLU(inplace=True))
+                                          nn.LeakyReLU(inplace=False))
 
         self.Dense_block1 = Bottleneck(self.channels, self.channels)
         self.Dense_block2 = Bottleneck(self.channels * 2, self.channels)
         self.Dense_block3 = Bottleneck(self.channels * 3, self.channels)
         self.fivth_layer = nn.Sequential(self.conv2(self.channels, config.message_length),
                                          nn.BatchNorm2d(config.message_length),
-                                         nn.LeakyReLU(inplace=True))
+                                         nn.LeakyReLU(inplace=False))
 
         self.average = nn.AdaptiveAvgPool2d(output_size=(1, 1))
         self.linear = nn.Linear(config.message_length, 1)
@@ -57,6 +57,7 @@ class Discriminator(nn.Module):
         x = self.fivth_layer(feature3)
 
         X = self.average(x)
-        X.squeeze_(3).squeeze_(2)
+        X = X.squeeze(3)
+        X = X.squeeze(2)
         X = self.linear(X)
         return X

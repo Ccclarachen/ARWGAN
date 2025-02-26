@@ -18,6 +18,9 @@ def train(model: ARWGAN,
           this_run_folder: str,
           tb_logger):
 
+    # 添加异常检测
+    torch.autograd.set_detect_anomaly(True)
+
     train_data, val_data = utils.get_data_loaders(net_config, train_options)
     file_count = len(train_data.dataset)
     if file_count % train_options.batch_size == 0:

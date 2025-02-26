@@ -6,11 +6,13 @@ import pickle
 import utils
 import logging
 import sys
+from datetime import datetime
 
 from options import *
 from model.ARWGAN import ARWGAN
 from noise_layers.noiser import Noiser
 from noise_argparser import NoiseArgParser
+from tensorboard_logger import TensorBoardLogger
 
 from train import train
 
@@ -27,14 +29,12 @@ def main():
     new_run_parser.add_argument('--batch-size', '-b', required=True, type=int, help='The batch size.')
     new_run_parser.add_argument('--epochs', '-e', default=100, type=int, help='Number of epochs to run the simulation.')
     new_run_parser.add_argument('--name', required=True, type=str, help='The name of the experiment.')
-
+    new_run_parser.add_argument('--runs-folder', default='./runs', type=str, help='The directory where run logs are stored.')
     new_run_parser.add_argument('--size', '-s', default=128, type=int,
                                 help='The size of the images (images are square so this is height and width).')
     new_run_parser.add_argument('--message', '-m', default=30, type=int, help='The length in bits of the watermark.')
-    new_run_parser.add_argument('--continue-from-folder', '-c', default='', type=str,
+    new_run_parser.add_argument('--continue-from-folder', '-c', type=str,
                                 help='The folder from where to continue a previous run. Leave blank if you are starting a new experiment.')
-    # parser.add_argument('--tensorboard', dest='tensorboard', action='store_true',
-    #                     help='If specified, use adds a Tensorboard log. On by default')
     new_run_parser.add_argument('--tensorboard', action='store_true',
                                 help='Use to switch on Tensorboard logging.')
     new_run_parser.add_argument('--enable-fp16', dest='enable_fp16', action='store_true',
@@ -53,8 +53,6 @@ def main():
                                  help='The directory where the data is stored. Specify a value only if you want to override the previous value.')
     continue_parser.add_argument('--epochs', '-e', required=False, type=int,
                                 help='Number of epochs to run the simulation. Specify a value only if you want to override the previous value.')
-    # continue_parser.add_argument('--tensorboard', action='store_true',
-    #                             help='Override the previous setting regarding tensorboard logging.')
 
     args = parent_parser.parse_args()
     checkpoint = None
@@ -73,7 +71,7 @@ def main():
             if train_options.start_epoch < args.epochs:
                 train_options.number_of_epochs = args.epochs
             else:
-                print(f'Command-line specifies of number of epochs = {args.epochs}, but folder={args.folder} '
+                print(f'Command-line specifies of number of epochs = {args.epochs}, but folder={this_run_folder} '
                       f'already contains checkpoint for epoch = {train_options.start_epoch}.')
                 exit(1)
 
@@ -85,7 +83,7 @@ def main():
             number_of_epochs=args.epochs,
             train_folder=os.path.join(args.data_dir,'train'),
             validation_folder=os.path.join(args.data_dir,'val'),
-            runs_folder=os.path.join('.', 'runs'),
+            runs_folder=args.runs_folder,
             start_epoch=start_epoch,
             experiment_name=args.name)
 
@@ -109,30 +107,37 @@ def main():
             pickle.dump(noise_config, f)
             pickle.dump(net_config, f)
 
+    # 创建带有时间戳的日志目录
+    timestamp = datetime.now().strftime('%Y.%m.%d--%H-%M-%S')
+    log_dir = os.path.join(args.runs_folder, f"{args.name} {timestamp}")
+    os.makedirs(log_dir, exist_ok=True)
 
+    # 配置日志记录器
+    log_file = os.path.join(log_dir, f'{args.name}.log')
     logging.basicConfig(level=logging.INFO,
-                        format='%(message)s',
+                        format='%(message)s',  # 使用简单的消息格式
                         handlers=[
-                            logging.FileHandler(os.path.join(this_run_folder, f'{train_options.experiment_name}.log')),
+                            logging.FileHandler(log_file),
                             logging.StreamHandler(sys.stdout)
                         ])
-    if (args.command == 'new' and args.tensorboard) or \
-            (args.command == 'continue' and os.path.isdir(os.path.join(this_run_folder, 'tb-logs'))):
-        logging.info('Tensorboard is enabled. Creating logger.')
-        from tensorboard_logger import TensorBoardLogger
-        tb_logger = TensorBoardLogger(os.path.join(this_run_folder, 'tb-logs'))
+
+    if args.tensorboard:
+        tb_logger = TensorBoardLogger(log_dir)
+        print(f'Tensorboard is enabled. Creating logger at {log_dir}')
     else:
         tb_logger = None
 
     noiser = Noiser(noise_config, device)
     model = ARWGAN(net_config, device, noiser, tb_logger)
 
-    if args.command == 'continue':
-        # if we are continuing, we have to load the model params
+    if args.continue_from_folder:
+        # 仅加载模型权重
+        checkpoint, loaded_checkpoint_file_name = utils.load_last_checkpoint(os.path.join(args.continue_from_folder, 'checkpoints'))
         assert checkpoint is not None
         logging.info(f'Loading checkpoint from file {loaded_checkpoint_file_name}')
         utils.model_from_checkpoint(model, checkpoint)
 
+    # 记录模型和训练配置信息
     logging.info('ARWGAN model: {}\n'.format(model.to_stirng()))
     logging.info('Model Configuration:\n')
     logging.info(pprint.pformat(vars(net_config)))
@@ -140,6 +145,12 @@ def main():
     logging.info(pprint.pformat(str(noise_config)))
     logging.info('\nTraining train_options:\n')
     logging.info(pprint.pformat(vars(train_options)))
+
+    # 开始训练
+    logging.info(f'Starting epoch {train_options.start_epoch}/{train_options.number_of_epochs}')
+    logging.info(f'Batch size = {train_options.batch_size}')
+    steps_in_epoch = len(train_options.train_folder) // train_options.batch_size
+    logging.info(f'Steps in epoch = {steps_in_epoch}')
 
     train(model, device, net_config, train_options, this_run_folder, tb_logger)
 

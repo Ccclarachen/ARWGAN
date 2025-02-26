@@ -34,15 +34,13 @@ class Bottleneck(nn.Module):
     def __init__(self, nChannels, growthRate):
         super(Bottleneck, self).__init__()
         interChannels = 4*growthRate
-        self.relu=nn.ReLU(inplace=True)
+        self.relu = nn.ReLU(inplace=False)
         self.bn1 = nn.BatchNorm2d(nChannels)
-        self.conv1 = nn.Conv2d(nChannels, interChannels, kernel_size=1,
-                               bias=False)
+        self.conv1 = nn.Conv2d(nChannels, interChannels, kernel_size=1, bias=False)
         self.bn2 = nn.BatchNorm2d(interChannels)
-        self.conv2 = nn.Conv2d(interChannels, growthRate, kernel_size=3,
-                               padding=1, bias=False)
+        self.conv2 = nn.Conv2d(interChannels, growthRate, kernel_size=3, padding=1, bias=False)
 
-    def forward(self, x,last=False):
+    def forward(self, x, last=False):
         out = self.conv1(self.relu(self.bn1(x)))
         out = self.conv2(self.relu(self.bn2(out)))
         if last:

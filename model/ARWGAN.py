@@ -44,13 +44,12 @@ class ARWGAN:
 
         self.tb_logger = tb_logger
         if tb_logger is not None:
-            from tensorboard_logger import TensorBoardLogger
-            encoder_final = self.encoder_decoder.encoder._modules['final_layer']
-            encoder_final.register_backward_hook(tb_logger.grad_hook_by_name('grads/encoder_out'))
+            encoder_final = self.encoder_decoder.encoder.final_layer
+            encoder_final.register_full_backward_hook(tb_logger.grad_hook_by_name('grads/encoder_out'))
             decoder_final = self.encoder_decoder.decoder._modules['linear']
-            decoder_final.register_backward_hook(tb_logger.grad_hook_by_name('grads/decoder_out'))
+            decoder_final.register_full_backward_hook(tb_logger.grad_hook_by_name('grads/decoder_out'))
             discrim_final = self.discriminator._modules['linear']
-            discrim_final.register_backward_hook(tb_logger.grad_hook_by_name('grads/discrim_out'))
+            discrim_final.register_full_backward_hook(tb_logger.grad_hook_by_name('grads/discrim_out'))
 
     def train_on_batch(self, batch: list):
 

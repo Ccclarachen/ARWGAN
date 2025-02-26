@@ -33,22 +33,22 @@ class Encoder(nn.Module):
         self.second_layer = nn.Sequential(
             self.conv2(self.conv_channels, self.conv_channels),
             nn.BatchNorm2d(self.conv_channels),
-            nn.LeakyReLU(inplace=True),
+            nn.LeakyReLU(inplace=False),
         )
 
         self.third_layer = nn.Sequential(
             self.conv2(self.conv_channels * 2, self.conv_channels),
             nn.BatchNorm2d(self.conv_channels),
-            nn.LeakyReLU(inplace=True),
+            nn.LeakyReLU(inplace=False),
             self.conv2(self.conv_channels, self.conv_channels),
             nn.BatchNorm2d(self.conv_channels),
-            nn.LeakyReLU(inplace=True),
+            nn.LeakyReLU(inplace=False),
         )
 
         self.fourth_layer = nn.Sequential(
             self.conv2(self.conv_channels * 3 + config.message_length, self.conv_channels),
             nn.BatchNorm2d(self.conv_channels),
-            nn.LeakyReLU(inplace=True)
+            nn.LeakyReLU(inplace=False)
         )
 
         self.Dense_block1 = Bottleneck(self.conv_channels + config.message_length, self.conv_channels)
@@ -60,18 +60,18 @@ class Encoder(nn.Module):
 
         self.fivth_layer = nn.Sequential(
             nn.BatchNorm2d(self.conv_channels + config.message_length),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
             self.conv2(self.conv_channels + config.message_length, self.conv_channels),
             nn.BatchNorm2d(self.conv_channels),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
             self.conv2(self.conv_channels, config.message_length),
         )
         self.sixth_layer = nn.Sequential(
             nn.BatchNorm2d(self.conv_channels),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
             self.conv2(self.conv_channels, self.conv_channels),
             nn.BatchNorm2d(self.conv_channels),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
             self.conv2(self.conv_channels, config.message_length),
             nn.Softmax(dim=1)
         )
@@ -84,7 +84,7 @@ class Encoder(nn.Module):
         H, W = image.size()[2], image.size()[3]
 
         expanded_message = message.unsqueeze(-1)
-        expanded_message.unsqueeze_(-1)
+        expanded_message = expanded_message.unsqueeze(-1)
         expanded_message = expanded_message.expand(-1, -1, H, W)
 
         feature0 = self.first_layer(image)
