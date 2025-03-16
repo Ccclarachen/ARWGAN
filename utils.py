@@ -58,8 +58,10 @@ def save_images(original_images, watermarked_images, epoch, folder, resize_to=No
         watermarked_images = F.interpolate(watermarked_images, size=resize_to)
 
     stacked_images = torch.cat([images, watermarked_images], dim=0)
-    filename = os.path.join(folder, 'epoch-{}.png'.format(epoch))
-    torchvision.utils.save_image(stacked_images, filename, original_images.shape[0], normalize=False)
+    # filename = os.path.join(folder, 'epoch-{}.png'.format(epoch))
+    filename = folder
+    torchvision.utils.save_image(stacked_images, filename, nrow=original_images.shape[0], normalize=False, format=None)
+
 def sorted_nicely(l):
     """ Sort the given iterable in the way that humans expect."""
     convert = lambda text: int(text) if text.isdigit() else text
