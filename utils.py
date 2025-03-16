@@ -7,6 +7,7 @@ import csv
 import time
 import pickle
 import logging
+import matplotlib.pyplot as plt
 
 import torch
 from torch.nn.functional import conv2d
@@ -57,8 +58,27 @@ def save_images(original_images, watermarked_images, epoch, folder, resize_to=No
         images = F.interpolate(images, size=resize_to)
         watermarked_images = F.interpolate(watermarked_images, size=resize_to)
 
-    stacked_images = torch.cat([images, watermarked_images], dim=0)
-    # filename = os.path.join(folder, 'epoch-{}.png'.format(epoch))
+    # Calculate the residual image
+    residual = torch.abs(images - watermarked_images)
+    
+    # Convert residual to numpy for matplotlib processing
+    residual_np = residual[0].permute(1, 2, 0).numpy()
+    # Convert to grayscale by taking mean across channels
+    residual_gray = np.mean(residual_np, axis=2)
+    
+    # Apply colormap
+    plt.imsave('temp_residual.png', residual_gray, cmap='jet')
+    # Read back the colormapped image
+    residual_colored = torch.from_numpy(plt.imread('temp_residual.png')).permute(2, 0, 1).unsqueeze(0)
+    os.remove('temp_residual.png')
+    
+    # Ensure all tensors are in the same format
+    residual_colored = residual_colored[:, :3, :, :].float()  # Remove alpha channel if present
+    
+    # Concatenate images horizontally
+    stacked_images = torch.cat([images, watermarked_images, residual_colored], dim=3)
+
+    # Save the concatenated image
     filename = folder
     torchvision.utils.save_image(stacked_images, filename, nrow=original_images.shape[0], normalize=False, format=None)
 
